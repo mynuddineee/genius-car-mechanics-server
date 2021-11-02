@@ -17,7 +17,7 @@ app.use(express.json());
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.jfqqz.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 
-//console.log(uri);  // for connection check
+console.log(uri);  // for connection check
 
 // insert data
 
@@ -29,7 +29,8 @@ async function run(){
 
         const database = client.db('carMechanic');
         const servicesCollection = database.collection('services');
-        //console.log('connected to db')  // connection check to db
+        const orderCollection = database.collection('orders');
+        console.log('connected to db')  // connection check to db
 
 
         // get data from db
@@ -60,19 +61,50 @@ async function run(){
 
             const service = req.body;
             console.log('hit the post', service)
-
-           /* const service = {
-                    
-                "name": "ENGINE DIAGNOSTIC",
-                "price": "300",
-                "description": "Lorem ipsum dolor sit amet, consectetu radipisi cing elitBeatae autem aperiam nequ quaera molestias voluptatibus harum ametipsa.",
-                "img": "https://i.ibb.co/dGDkr4v/1.jpg"
-            }*/
-
             const result = await servicesCollection.insertOne(service);
             console.log(result);
             res.json(result)
 
+        })
+
+        // Add Orders API
+        app.get('/orders', async (req, res) => {
+
+                let query = {};
+                const email = req.query.email;
+                if(email){
+                    query = {email: email};
+
+                }
+                const cursor = orderCollection.find(query);
+                const orders = await cursor.toArray();
+                res.json(orders);
+            
+
+        });
+
+        app.get('/services', async (req, res) => {
+
+            let query = {};
+            const email = req.query.email;
+            if(email){
+                query = {email: email};
+
+            }
+            const cursor = servicesCollection.find(query);
+            const orders = await cursor.toArray();
+            res.json(orders);
+        
+
+    });
+
+        // send orders info to database
+
+        app.post('/orders', async (req, res) => {
+            const order = req.body;
+            order.createdAt = new Date();
+            const result = await orderCollection.insertOne(order);
+            res.json(result);
         })
 
         // Delete API
