@@ -3,9 +3,23 @@ const express = require('express');
 const { MongoClient } = require('mongodb');
 const ObjectId = require('mongodb').ObjectId;
 const cors = require('cors');
+var admin = require("firebase-admin");;
 require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 5000;
+
+
+// firebase admin initializeApp
+
+
+
+
+var serviceAccount = require("./genius-car-mechanic-834a1-firebase-adminsdk-6878k-ec0265d56a.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
 
 // middleware setup
 
@@ -19,6 +33,22 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
 
 console.log(uri);  // for connection check
 
+
+// verify token
+async function verifyToken(req, res, next) {
+    if (req.headers?.authorization?.startsWith('Bearer ')) {
+        const idToken = req.headers.authorization.split('Bearer ')[1];
+        //console.log('inside separate function', idToken);
+        try {
+            const decodedUser = await admin.auth().verifyIdToken(idToken);
+            req.decodedUserEmail = decodedUser.email;
+        }
+        catch {
+
+        }
+    }
+    next();
+}
 // insert data
 
 async function run(){
@@ -68,32 +98,41 @@ async function run(){
         })
 
         // Add Orders API
-        app.get('/orders', async (req, res) => {
+        app.get('/orders',verifyToken, async (req, res) => {
 
-                let query = {};
                 const email = req.query.email;
-                if(email){
-                    query = {email: email};
-
-                }
+            if (req.decodedUserEmail === email) {
+                const query = { email: email };
                 const cursor = orderCollection.find(query);
                 const orders = await cursor.toArray();
                 res.json(orders);
+            }
+            else {
+                res.status(401).json({ message: 'User not authorized' })
+            }
+              
+               
+                
+                 
             
 
         });
 
-        app.get('/services', async (req, res) => {
-
-            let query = {};
+        app.get('/services',verifyToken, async (req, res) => {
+            
+            
             const email = req.query.email;
-            if(email){
-                query = {email: email};
-
+            if (req.decodedUserEmail === email) {
+                const query = { email: email };
+                const cursor = orderCollection.find(query);
+                const orders = await cursor.toArray();
+                res.json(orders);
             }
-            const cursor = servicesCollection.find(query);
-            const orders = await cursor.toArray();
-            res.json(orders);
+            else {
+                res.status(401).json({ message: 'User not authorized' })
+            }
+            
+            
         
 
     });
